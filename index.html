@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Natal nas Prefeituras</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: catálogo de editais. Filtros numa coluna à esquerda (no celular, no topo e recolhíveis);
+   cada licitação é uma ficha com prazo, valor, distância de Itapeva e os documentos para abrir.
+   Paleta da Duarte Carvalho Consultoria: azul-marinho + dourado; verde-pinheiro para a região. */
+:root {
+  --papel: #f4f6f9;
+  --ficha: #ffffff;
+  --tinta: #1b2a3d;
+  --tinta-2: #5b6b7f;
+  --linha: #d6dde6;
+  --marinho: #1b2a3d;
+  --marinho-claro: #e4e9f0;
+  --sobre-marinho: #ffffff;
+  --ouro: #b88a00;          /* texto/realce dourado legível no claro */
+  --ouro-fundo: #fdf3d2;
+  --pinho: #1f6b4a;         /* região de Itapeva */
+  --pinho-claro: #e1f1e8;
+  --alerta: #a3401a;        /* encerra logo */
+  --alerta-claro: #fbe9e1;
+  --f-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --f-texto: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papel: #10161e; --ficha: #18212c; --tinta: #e7ecf2; --tinta-2: #9daab9; --linha: #2b3846;
+    --marinho: #9db8d9; --marinho-claro: #1f2c3b; --sobre-marinho: #0e141b;
+    --ouro: #f2c84b; --ouro-fundo: #3a3013; --pinho: #6cc79a; --pinho-claro: #173327;
+    --alerta: #f29a6e; --alerta-claro: #3b2117;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --papel: #10161e; --ficha: #18212c; --tinta: #e7ecf2; --tinta-2: #9daab9; --linha: #2b3846;
+  --marinho: #9db8d9; --marinho-claro: #1f2c3b; --sobre-marinho: #0e141b;
+  --ouro: #f2c84b; --ouro-fundo: #3a3013; --pinho: #6cc79a; --pinho-claro: #173327;
+  --alerta: #f29a6e; --alerta-claro: #3b2117;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--papel); color: var(--tinta);
+  font: 16px/1.45 var(--f-texto);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+a { color: var(--marinho); }
+:focus-visible { outline: 2px solid var(--ouro); outline-offset: 2px; }
+.casca { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* cabeçalho */
+header { display: grid; gap: 14px; }
+.marca { display: flex; align-items: center; gap: 12px; color: var(--tinta-2); font-size: 0.9rem; }
+.selo { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--marinho); color: var(--sobre-marinho);
+  font: 800 0.95rem var(--f-display); letter-spacing: 0.02em; box-shadow: inset 0 0 0 2px var(--ouro); flex: none; }
+.marca b { color: var(--tinta); font-weight: 700; }
+h1 { font: 800 clamp(1.8rem, 4.4vw, 2.7rem)/1.04 var(--f-display); margin: 0; letter-spacing: -0.015em; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--ouro); }
+.sub { color: var(--tinta-2); max-width: 70ch; margin: 0; }
+.placar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .placar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.num { background: var(--ficha); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 14px; min-width: 0; }
+.num span { display: block; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tinta-2); }
+.num b { display: block; font: 600 1.35rem/1.2 var(--f-num); font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
+.num small { color: var(--tinta-2); font-size: 0.82rem; }
+
+.corpo { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .corpo { grid-template-columns: minmax(0, 1fr); } }
+main { min-width: 0; }
+
+/* filtros */
+.filtros { background: var(--ficha); border: 1px solid var(--linha); border-radius: 10px; padding: 16px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+@media (max-width: 860px) { .filtros { position: static; } }
+.filtros summary { font: 600 1.05rem var(--f-display); cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
+.filtros summary::-webkit-details-marker { display: none; }
+.filtros summary::after { content: "▾"; color: var(--tinta-2); }
+.filtros[open] summary::after { content: "▴"; }
+.grade { display: grid; gap: 14px; margin-top: 12px; }
+.campo { display: grid; gap: 5px; }
+.campo > label, .campo > .rot { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tinta-2); }
+input[type="search"], input[type="number"], select {
+  width: 100%; font: inherit; font-size: 0.95rem; color: var(--tinta); background: var(--papel);
+  border: 1px solid var(--linha); border-radius: 6px; padding: 7px 9px; min-width: 0;
+}
+.par { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips label { display: inline-flex; align-items: center; gap: 5px; font-size: 0.88rem; border: 1px solid var(--linha); border-radius: 999px; padding: 3px 10px; cursor: pointer; user-select: none; }
+.chips small { color: var(--tinta-2); font-family: var(--f-num); font-size: 0.72rem; }
+.chips input { accent-color: var(--marinho); margin: 0; }
+.chips label:has(input:checked) { background: var(--marinho-claro); border-color: var(--marinho); }
+input[type="range"] { width: 100%; accent-color: var(--marinho); }
+.valor-range { font-family: var(--f-num); font-size: 0.85rem; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; cursor: pointer; }
+.check input { accent-color: var(--marinho); width: 16px; height: 16px; margin: 0; }
+button { font: inherit; cursor: pointer; }
+.limpar { background: none; border: 1px solid var(--linha); color: var(--tinta-2); border-radius: 6px; padding: 6px 10px; font-size: 0.88rem; }
+
+/* barra e lista */
+.barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.esq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.vistas { display: inline-flex; border: 1px solid var(--linha); border-radius: 8px; overflow: hidden; }
+.vistas button { background: var(--ficha); color: var(--tinta-2); border: 0; padding: 6px 14px; font-weight: 600; }
+.vistas button[aria-pressed="true"] { background: var(--marinho); color: var(--sobre-marinho); }
+.conta { font: 600 1.1rem var(--f-display); }
+.conta small { font: 400 0.9rem var(--f-texto); color: var(--tinta-2); }
+.ordem { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--tinta-2); }
+.ordem select { width: auto; }
+.cidade-sel { display: inline-flex; align-items: center; gap: 6px; background: var(--marinho-claro); border: 1px solid var(--marinho); border-radius: 999px; padding: 2px 4px 2px 12px; font-size: 0.9rem; font-weight: 600; }
+.cidade-sel button { background: none; border: 0; color: var(--tinta-2); font-size: 1rem; line-height: 1; padding: 2px 6px; }
+.lista { display: grid; gap: 10px; margin-top: 12px; }
+
+.ficha { background: var(--ficha); border: 1px solid var(--linha); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 18px; }
+.ficha.alvo { border-color: var(--ouro); box-shadow: inset 4px 0 0 var(--ouro); }
+.ficha > div { min-width: 0; }
+.onde { font: 600 1.06rem/1.25 var(--f-texto); }
+.onde small { font-weight: 400; color: var(--tinta-2); font-size: 0.9rem; }
+.orgao { color: var(--tinta-2); font-size: 0.88rem; }
+.objeto { margin: 6px 0 0; font-size: 0.95rem; overflow-wrap: anywhere; text-wrap: pretty; }
+.etq { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.etq span { font-size: 0.78rem; border-radius: 4px; padding: 1px 7px; background: var(--papel); color: var(--tinta-2); border: 1px solid var(--linha); }
+.etq .reg { color: var(--pinho); background: var(--pinho-claro); border-color: transparent; font-weight: 700; }
+.etq .alv { color: var(--ouro); background: var(--ouro-fundo); border-color: transparent; font-weight: 700; }
+.lado-ficha { text-align: right; display: grid; gap: 4px; align-content: start; }
+.valor { font: 600 1.12rem var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.valor small { display: block; font: 400 0.75rem var(--f-texto); color: var(--tinta-2); }
+.prazo { justify-self: end; font: 600 0.85rem var(--f-num); border-radius: 4px; padding: 2px 8px; background: var(--papel); color: var(--tinta-2); white-space: nowrap; }
+.prazo.logo { background: var(--alerta-claro); color: var(--alerta); }
+.prazo.fim { text-decoration: line-through; }
+.quando { font-size: 0.85rem; color: var(--tinta-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.docs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px dashed var(--linha); padding-top: 10px; margin-top: 4px; }
+.bt { display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; text-decoration: none; border-radius: 6px; padding: 5px 11px; border: 1px solid var(--linha); color: var(--tinta); background: var(--ficha); }
+.bt:hover { border-color: var(--marinho); }
+.bt.pncp { background: var(--marinho); color: var(--sobre-marinho); border-color: var(--marinho); }
+.bt.tr { border-color: var(--ouro); }
+.bt i { font-style: normal; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; color: var(--tinta-2); }
+.bt.pncp i { color: inherit; opacity: 0.8; }
+.nota-tr { font-size: 0.8rem; color: var(--tinta-2); }
+details.mais { grid-column: 1 / -1; }
+details.mais summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--marinho); }
+.tab-itens { overflow-x: auto; margin-top: 8px; }
+.tab-itens table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+.tab-itens th, .tab-itens td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+.tab-itens th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tinta-2); }
+.tab-itens td.n { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.outros { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+@media (max-width: 560px) {
+  .ficha { grid-template-columns: minmax(0, 1fr); }
+  .lado-ficha { text-align: left; grid-auto-flow: column; justify-content: start; align-items: baseline; gap: 10px; }
+  .prazo { justify-self: start; }
+}
+.vazio { padding: 28px; text-align: center; color: var(--tinta-2); background: var(--ficha); border: 1px dashed var(--linha); border-radius: 10px; }
+.nota { color: var(--tinta-2); font-size: 0.85rem; max-width: 75ch; margin-top: 20px; }
+
+/* mapa */
+.mapa { margin-top: 12px; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 14px; align-items: start; }
+@media (max-width: 1000px) { .mapa { grid-template-columns: minmax(0, 1fr); } }
+.quadro { position: relative; background: var(--ficha); border: 1px solid var(--linha); border-radius: 10px; overflow: hidden; }
+.quadro svg { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; user-select: none; }
+.quadro svg.arrastando { cursor: grabbing; }
+.quadro path { stroke: var(--linha); stroke-width: 0.6; vector-effect: non-scaling-stroke; fill: var(--papel); }
+.quadro path.b1, .legenda .lg1 { fill: color-mix(in srgb, var(--marinho) 30%, var(--ficha)); background: color-mix(in srgb, var(--marinho) 30%, var(--ficha)); }
+.quadro path.b2, .legenda .lg2 { fill: color-mix(in srgb, var(--marinho) 62%, var(--ficha)); background: color-mix(in srgb, var(--marinho) 62%, var(--ficha)); }
+.quadro path.b3, .legenda .lg3 { fill: var(--marinho); background: var(--marinho); }
+.legenda .lg0 { background: var(--papel); }
+.quadro path.sel { stroke: var(--ouro); stroke-width: 2.5; }
+.quadro path:hover { stroke: var(--tinta); stroke-width: 1.5; }
+.quadro circle.raio { fill: none; stroke: var(--pinho); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.quadro circle.casa { fill: var(--ouro); stroke: var(--ficha); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.quadro text.casa-t { font: 700 13px var(--f-texto); fill: var(--tinta); paint-order: stroke; stroke: var(--ficha); stroke-width: 3px; pointer-events: none; }
+.zoom { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.zoom button { background: var(--ficha); color: var(--tinta); border: 1px solid var(--linha); border-radius: 6px; padding: 4px 10px; font-size: 0.85rem; font-weight: 600; }
+.legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 12px; border-top: 1px solid var(--linha); font-size: 0.8rem; color: var(--tinta-2); }
+.legenda i { display: inline-block; width: 14px; height: 10px; border: 1px solid var(--linha); border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+.legenda .lgr { border: 1px dashed var(--pinho); background: transparent; }
+.dica { position: absolute; pointer-events: none; background: var(--tinta); color: var(--papel); border-radius: 6px; padding: 6px 9px; font-size: 0.82rem; line-height: 1.35; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); }
+.lado { display: grid; gap: 12px; }
+.cartao { background: var(--ficha); border: 1px solid var(--linha); border-radius: 10px; padding: 12px 14px; }
+.cartao h4 { margin: 0 0 6px; font: 600 0.98rem var(--f-display); }
+.cartao p { margin: 2px 0; font-size: 0.9rem; color: var(--tinta-2); }
+.cartao p b { color: var(--tinta); font-family: var(--f-num); font-weight: 500; }
+.cartao .ir { margin-top: 8px; background: var(--marinho); color: var(--sobre-marinho); border: 0; border-radius: 6px; padding: 6px 12px; font-weight: 600; font-size: 0.88rem; }
+.ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ranking button { width: 100%; display: flex; justify-content: space-between; gap: 8px; background: none; border: 0; border-radius: 4px; padding: 3px 4px; color: var(--tinta); font-size: 0.9rem; text-align: left; }
+.ranking button:hover { background: var(--marinho-claro); }
+.ranking small { font-family: var(--f-num); color: var(--tinta-2); }
+@media (prefers-reduced-motion: no-preference) { .ficha { transition: border-color .15s; } .ficha:hover { border-color: var(--marinho); } }
+</style>
+
+<div class="casca">
+  <header>
+    <div class="marca"><div class="selo" aria-hidden="true">DC</div><div>Preparado por <b>Duarte Carvalho Consultoria</b> para <b>Formatto Design</b> · <span id="coleta">PNCP</span></div></div>
+    <h1>Natal nas Prefeituras: licitações de <em>decoração natalina</em> abertas em SP</h1>
+    <p class="sub">Decoração, cenografia, iluminação e eventos de Natal, com edital, termo de referência e itens de cada uma. A distância é contada a partir de Itapeva.</p>
+    <div class="placar" id="placar"></div>
+  </header>
+
+  <div class="corpo">
+    <details class="filtros" id="painel" open>
+      <summary>Filtros</summary>
+      <div class="grade">
+        <div class="campo">
+          <label for="f-busca">Cidade, órgão ou objeto</label>
+          <input type="search" id="f-busca" placeholder="ex.: árvore, Sorocaba" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="f-km">Distância de Itapeva</label>
+          <input type="range" id="f-km" min="50" max="650" step="25" value="650">
+          <span class="valor-range" id="f-km-v">qualquer</span>
+        </div>
+        <div class="campo">
+          <span class="rot">Tipo</span>
+          <div class="chips" id="f-tipos"></div>
+        </div>
+        <div class="campo">
+          <span class="rot">Plataforma</span>
+          <div class="chips" id="f-plat"></div>
+        </div>
+        <div class="campo">
+          <span class="rot">Valor estimado (R$)</span>
+          <div class="par">
+            <input type="number" id="f-vmin" placeholder="de" min="0" step="10000" inputmode="numeric" aria-label="Valor estimado a partir de">
+            <input type="number" id="f-vmax" placeholder="até" min="0" step="10000" inputmode="numeric" aria-label="Valor estimado até">
+          </div>
+        </div>
+        <div class="campo">
+          <span class="rot">Prazo</span>
+          <label class="check"><input type="checkbox" id="f-abertas" checked> Esconder as encerradas</label>
+          <label class="check"><input type="checkbox" id="f-tr"> Só com termo de referência separado</label>
+        </div>
+        <button type="button" class="limpar" id="limpar">Limpar filtros</button>
+      </div>
+    </details>
+
+    <main>
+      <div class="barra">
+        <div class="esq">
+          <div class="vistas" role="group" aria-label="Visualização">
+            <button type="button" id="v-lista" aria-pressed="true">Lista</button>
+            <button type="button" id="v-mapa" aria-pressed="false">Mapa</button>
+          </div>
+          <div class="conta" id="conta"></div>
+          <span class="cidade-sel" id="cidade-sel" hidden><span id="cidade-nome"></span><button type="button" id="cidade-x" aria-label="Tirar o filtro de cidade">✕</button></span>
+        </div>
+        <label class="ordem" for="f-ordem">Ordenar por
+          <select id="f-ordem">
+            <option value="prazo">Encerra primeiro</option>
+            <option value="perto">Mais perto de Itapeva</option>
+            <option value="maior">Maior valor</option>
+            <option value="menor">Menor valor</option>
+          </select>
+        </label>
+      </div>
+      <div class="lista" id="lista"><div class="vazio">Carregando as licitações…</div></div>
+      <div class="mapa" id="mapa" hidden>
+        <div class="quadro" id="quadro">
+          <svg id="svg" role="img" aria-label="Mapa de São Paulo com as licitações de Natal por município"></svg>
+          <div class="zoom">
+            <button type="button" data-z="estado">Estado</button>
+            <button type="button" data-z="itapeva">Itapeva</button>
+            <button type="button" data-z="+" aria-label="Aproximar">+</button>
+            <button type="button" data-z="-" aria-label="Afastar">−</button>
+          </div>
+          <div class="dica" id="dica" hidden></div>
+          <div class="legenda" id="legenda"></div>
+        </div>
+        <div class="lado">
+          <div class="cartao" id="info"></div>
+          <div class="cartao"><h4>Mais perto de Itapeva</h4><ol class="ranking" id="ranking"></ol></div>
+        </div>
+      </div>
+      <p class="nota">Fonte: Portal Nacional de Contratações Públicas (PNCP), editais com proposta aberta. Os documentos abrem direto no PNCP. Quando não há termo de referência separado, ele vem dentro do edital, como anexo. Valor estimado é o publicado pelo órgão; quando o órgão não publica (valor sigiloso), aparece "sigiloso". Distância em linha reta a partir de Itapeva, aproximada; a estrada é maior. Antes de decidir, leia o edital: exigências de habilitação, visita técnica, prazos de montagem e forma de pagamento estão lá.</p>
+    </main>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const semAcento = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const brl = (c) => c == null ? "sigiloso" : "R$ " + (c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const brlCurto = (c) => c >= 100000000 ? "R$ " + (c / 100000000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi" : "R$ " + Math.round(c / 100000).toLocaleString("pt-BR") + " mil";
+const num = (s) => { const n = Number(s); return Number.isFinite(n) ? n : null; };
+const agora = new Date();
+let L = [], MAPA = null, ITAPEVA = null, cidadeSel = null, vb = null, paths = [];
+
+function prazoTxt(o) {
+  const ms = new Date(o.enc) - agora;
+  if (ms <= 0) return ["encerrada", "fim"];
+  const h = ms / 36e5;
+  if (h < 24) return ["faltam " + Math.max(1, Math.round(h)) + " h", "logo"];
+  const d = Math.floor(h / 24);
+  return ["faltam " + d + (d === 1 ? " dia" : " dias"), d <= 2 ? "logo" : ""];
+}
+const fmtQuando = (o) => {
+  const d = new Date(o.enc);
+  return d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" }) + " às " + o.hora;
+};
+
+async function carregar() {
+  try {
+    const [r1, r2] = await Promise.all([fetch("licitacoes.json"), fetch("mapa_sp.json")]);
+    const d = await r1.json(); MAPA = await r2.json();
+    L = d.licitacoes; ITAPEVA = d.itapeva;
+    const g = new Date(d.gerado_em);
+    $("coleta").textContent = "PNCP, consultado em " + g.toLocaleDateString("pt-BR") + " às " + g.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    preencher(); montarMapa(); restaurar(); aplicar();
+  } catch (e) {
+    $("lista").innerHTML = `<div class="vazio">Não deu para carregar os dados (${esc(e.message)}). Recarregue a página.</div>`;
+  }
+}
+
+function chips(el, nome, valores) {
+  const cont = {}; L.forEach((o) => { cont[o[nome]] = (cont[o[nome]] || 0) + 1; });
+  el.innerHTML = valores.map((v) => `<label><input type="checkbox" value="${esc(v)}" checked> ${esc(v)} <small>${cont[v] || 0}</small></label>`).join("");
+}
+function preencher() {
+  chips($("f-tipos"), "tipo", ["Serviço / locação", "Compra de materiais"]);
+  const plats = [...new Set(L.map((o) => o.plataforma))].sort((a, b) => L.filter((o) => o.plataforma === b).length - L.filter((o) => o.plataforma === a).length);
+  chips($("f-plat"), "plataforma", plats);
+}
+function marcados(id) { return [...$(id).querySelectorAll("input:checked")].map((i) => i.value); }
+
+function filtros() {
+  const q = semAcento($("f-busca").value.trim());
+  const km = +$("f-km").value, tipos = marcados("f-tipos"), plats = marcados("f-plat");
+  const vmin = num($("f-vmin").value) , vmax = num($("f-vmax").value);
+  const abertas = $("f-abertas").checked, soTr = $("f-tr").checked;
+  return (o) => {
+    if (q && !semAcento(o.mun + " " + o.orgao + " " + o.objeto).includes(q)) return false;
+    if (km < 650 && (o.km == null || o.km > km)) return false;
+    if (!tipos.includes(o.tipo) || !plats.includes(o.plataforma)) return false;
+    if ($("f-vmin").value && (o.valor == null || o.valor < vmin * 100)) return false;
+    if ($("f-vmax").value && (o.valor == null || o.valor > vmax * 100)) return false;
+    if (abertas && new Date(o.enc) <= agora) return false;
+    if (soTr && !o.docs.some((x) => x.tipo === "TR")) return false;
+    return true;
+  };
+}
+
+function placar(base) {
+  const ab = base.filter((o) => new Date(o.enc) > agora);
+  const soma = ab.reduce((s, o) => s + (o.valor || 0), 0);
+  const reg = ab.filter((o) => o.km != null && o.km <= 150);
+  const prox = ab.slice().sort((a, b) => a.enc.localeCompare(b.enc))[0];
+  $("placar").innerHTML = `
+    <div class="num"><span>Abertas</span><b>${ab.length}</b><small>de ${L.length} encontradas</small></div>
+    <div class="num"><span>Valor estimado somado</span><b>${brlCurto(soma)}</b><small>${ab.filter((o) => o.valor == null).length} com valor sigiloso</small></div>
+    <div class="num"><span>Até 150 km de Itapeva</span><b>${reg.length}</b><small>${reg.length ? brlCurto(reg.reduce((s, o) => s + (o.valor || 0), 0)) : "—"}</small></div>
+    <div class="num"><span>Próxima a encerrar</span><b>${prox ? esc(prox.mun) : "—"}</b><small>${prox ? fmtQuando(prox) : ""}</small></div>`;
+}
+
+const ORDEM = {
+  prazo: (a, b) => a.enc.localeCompare(b.enc),
+  perto: (a, b) => (a.km ?? 9999) - (b.km ?? 9999) || a.enc.localeCompare(b.enc),
+  maior: (a, b) => (b.valor ?? -1) - (a.valor ?? -1),
+  menor: (a, b) => (a.valor ?? 9e15) - (b.valor ?? 9e15),
+};
+
+function ficha(o) {
+  const [ptxt, pcls] = prazoTxt(o);
+  const tags = [];
+  if (o.grupo === "alvo") tags.push(`<span class="alv">Em andamento com a assessoria</span>`);
+  if (o.km != null && o.km <= 150) tags.push(`<span class="reg">Região de Itapeva</span>`);
+  tags.push(`<span>${esc(o.tipo)}</span>`, `<span>${esc(o.plataforma)}</span>`);
+  if (o.itens.length) tags.push(`<span>${o.itens.length} ${o.itens.length === 1 ? "item" : "itens"}</span>`);
+  const edital = o.docs.filter((x) => x.tipo === "Edital"), tr = o.docs.filter((x) => x.tipo === "TR"), outros = o.docs.filter((x) => x.tipo === "Anexo");
+  const bt = (x, cls, rot) => `<a class="bt ${cls}" href="${esc(x.url)}" target="_blank" rel="noopener" title="${esc(x.titulo)}"><i>${rot}</i>${esc(curto(x.titulo))}</a>`;
+  const docs = [`<a class="bt pncp" href="${esc(o.pncp)}" target="_blank" rel="noopener"><i>PNCP</i>Página da licitação</a>`,
+    ...edital.slice(0, 2).map((x) => bt(x, "", "EDITAL")), ...tr.map((x) => bt(x, "tr", "TR"))];
+  if (!tr.length) docs.push(`<span class="nota-tr">TR dentro do edital (anexo)</span>`);
+  const extra = edital.slice(2).concat(outros);
+  const itens = o.itens.length > 1 || (o.itens[0] && o.itens[0].q !== "1.0000") ? `
+    <div class="tab-itens"><table><thead><tr><th>Item</th><th>Descrição</th><th>Qtd.</th><th>Unid.</th><th>Teto unit.</th><th>Teto total</th></tr></thead><tbody>
+    ${o.itens.map((i) => `<tr><td class="n">${esc(i.n)}</td><td>${esc(i.d)}</td><td class="n">${qtd(i.q)}</td><td>${esc(i.u)}</td><td class="n">${din(i.vu)}</td><td class="n">${din(i.vt)}</td></tr>`).join("")}
+    </tbody></table></div>` : "";
+  const mais = extra.length || itens ? `<details class="mais"><summary>${[itens ? "Itens e tetos" : "", extra.length ? extra.length + (extra.length === 1 ? " documento a mais" : " documentos a mais") : ""].filter(Boolean).join(" · ")}</summary>
+    ${itens}${extra.length ? `<div class="outros">${extra.map((x) => bt(x, "", x.tipo === "Edital" ? "EDITAL" : "ANEXO")).join("")}</div>` : ""}</details>` : "";
+  return `<article class="ficha${o.grupo === "alvo" ? " alvo" : ""}">
+    <div>
+      <div class="onde">${esc(o.mun)}/${esc(o.uf)} <small>${o.km != null ? (o.km === 0 ? "· em Itapeva" : `· ≈ ${o.km} km de Itapeva`) : ""}</small></div>
+      <div class="orgao">${esc(cap(o.orgao))}</div>
+      <p class="objeto">${esc(cap(o.objeto))}</p>
+      <div class="etq">${tags.join("")}</div>
+    </div>
+    <div class="lado-ficha">
+      <div class="valor">${brl(o.valor)}<small>${o.valor_fonte === "soma dos itens" ? "soma dos itens" : "valor estimado"}</small></div>
+      <div class="prazo ${pcls}">${ptxt}</div>
+      <div class="quando">${fmtQuando(o)}</div>
+    </div>
+    <div class="docs">${docs.join("")}</div>
+    ${mais}
+  </article>`;
+}
+function curto(t) {
+  t = String(t || "Documento").replace(/^[0-9a-f]{32}/i, "").replace(/\.pdf(\.pdf)?"?$/i, "").replace(/^"/, "").replace(/[_]+/g, " ").trim();
+  return t.length > 38 ? t.slice(0, 36) + "…" : (t || "Documento");
+}
+function cap(s) {
+  s = String(s || "");
+  const letras = s.replace(/[^A-Za-zÀ-ú]/g, "");
+  if (letras && letras === letras.toUpperCase()) s = s.toLowerCase().replace(/(^|[.!?]\s+)([a-zà-ú])/g, (m, p, c) => p + c.toUpperCase());
+  return s;
+}
+const qtd = (q) => { const n = num(q); return n == null ? esc(q) : n.toLocaleString("pt-BR", { maximumFractionDigits: 2 }); };
+const din = (v) => { const n = num(v); return n == null || v === "" ? "—" : "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+function aplicar() {
+  const f = filtros();
+  const base = L.filter(f);
+  placar(L.filter((o) => true));
+  const lista = (cidadeSel != null ? base.filter((o) => o.map === cidadeSel) : base).sort(ORDEM[$("f-ordem").value]);
+  const km = +$("f-km").value; $("f-km-v").textContent = km >= 650 ? "qualquer" : "até " + km + " km";
+  $("conta").innerHTML = `${lista.length} ${lista.length === 1 ? "licitação" : "licitações"} <small>de ${L.length}</small>`;
+  $("cidade-sel").hidden = cidadeSel == null;
+  if (cidadeSel != null) $("cidade-nome").textContent = MAPA.m[cidadeSel][0];
+  $("lista").innerHTML = lista.length ? lista.map(ficha).join("") : `<div class="vazio">Nenhuma licitação com esses filtros. Tente afastar a distância ou mostrar as encerradas.</div>`;
+  desenharMapa(base);
+  salvar();
+}
+
+/* mapa */
+const FAIXAS = [[1, "1"], [2, "2"], [3, "3 ou mais"]];
+let porMun = new Map();
+function montarMapa() {
+  const svg = $("svg");
+  vb = [0, 0, MAPA.w, MAPA.h]; aplicarVB();
+  paths = MAPA.m.map(([, d], i) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.dataset.i = i; svg.appendChild(p); return p; });
+  const [, , cx, cy] = MAPA.m[ITAPEVA];
+  const raio = document.createElementNS(NS, "circle"); raio.setAttribute("class", "raio"); raio.setAttribute("cx", cx); raio.setAttribute("cy", cy); raio.setAttribute("r", 150 / 0.92); svg.appendChild(raio);
+  const casa = document.createElementNS(NS, "circle"); casa.setAttribute("class", "casa"); casa.setAttribute("cx", cx); casa.setAttribute("cy", cy); casa.setAttribute("r", 5); svg.appendChild(casa);
+  const t = document.createElementNS(NS, "text"); t.setAttribute("class", "casa-t"); t.setAttribute("x", cx + 8); t.setAttribute("y", cy + 4); t.textContent = "Itapeva"; svg.appendChild(t);
+  $("legenda").innerHTML = `<span>Licitações por município:</span>` + FAIXAS.map(([, r], i) => `<span><i class="lg${i + 1}"></i>${r}</span>`).join("") + `<span><i class="lg0"></i>nenhuma</span><span><i class="lgr"></i>150 km de Itapeva</span>`;
+  $("info").innerHTML = "<h4>Escolha uma cidade</h4><p>Passe o mouse ou toque num município. As cores seguem os filtros ao lado.</p>";
+  ligarZoom(svg);
+}
+function desenharMapa(base) {
+  const g = new Map(); base.forEach((o) => { if (o.map != null) { if (!g.has(o.map)) g.set(o.map, []); g.get(o.map).push(o); } });
+  porMun = g;
+  paths.forEach((p, i) => { const n = g.has(i) ? g.get(i).length : 0; p.setAttribute("class", (n ? "b" + Math.min(n, 3) : "") + (i === cidadeSel ? " sel" : "")); });
+  const top = [...g].sort((a, b) => (a[1][0].km ?? 9999) - (b[1][0].km ?? 9999)).slice(0, 12);
+  $("ranking").innerHTML = top.length ? top.map(([i, l]) => `<li><button type="button" data-i="${i}">${esc(MAPA.m[i][0])} <small>${l[0].km ?? "?"} km · ${l.length}</small></button></li>`).join("") : `<li><small>Nenhuma com esses filtros.</small></li>`;
+  if (cidadeSel != null) mostrarInfo(cidadeSel);
+}
+function textoInfo(i) {
+  const l = porMun.get(i) || [];
+  if (!l.length) return `<h4>${esc(MAPA.m[i][0])}</h4><p>Nenhuma licitação de Natal aberta com esses filtros.</p>`;
+  const soma = l.reduce((s, o) => s + (o.valor || 0), 0);
+  return `<h4>${esc(MAPA.m[i][0])}</h4><p><b>${l.length}</b> ${l.length === 1 ? "licitação" : "licitações"}</p><p>Valor somado: <b>${soma ? brl(soma) : "sigiloso"}</b></p><p>Distância: <b>≈ ${l[0].km} km</b></p><button type="button" class="ir" data-i="${i}">Ver na lista</button>`;
+}
+function mostrarInfo(i) { $("info").innerHTML = textoInfo(i); }
+function escolher(i) { cidadeSel = i; trocarVista("lista"); aplicar(); }
+function aplicarVB() { $("svg").setAttribute("viewBox", vb.map((v) => v.toFixed(1)).join(" ")); }
+function zoomEm(cx, cy, f) { const w = Math.min(MAPA.w, Math.max(40, vb[2] * f)), h = w * MAPA.h / MAPA.w; vb = [cx - (cx - vb[0]) * w / vb[2], cy - (cy - vb[1]) * h / vb[3], w, h]; aplicarVB(); }
+function centrarEm(i, w) { const [, , cx, cy] = MAPA.m[i]; const h = w * MAPA.h / MAPA.w; vb = [cx - w / 2, cy - h / 2, w, h]; aplicarVB(); }
+function ponto(svg, ev) { const r = svg.getBoundingClientRect(); return [vb[0] + (ev.clientX - r.left) / r.width * vb[2], vb[1] + (ev.clientY - r.top) / r.height * vb[3]]; }
+function ligarZoom(svg) {
+  let arr = null, moveu = false;
+  svg.addEventListener("wheel", (ev) => { ev.preventDefault(); const [x, y] = ponto(svg, ev); zoomEm(x, y, ev.deltaY > 0 ? 1.2 : 1 / 1.2); }, { passive: false });
+  svg.addEventListener("pointerdown", (ev) => { arr = [ev.clientX, ev.clientY, vb[0], vb[1]]; moveu = false; svg.setPointerCapture(ev.pointerId); });
+  svg.addEventListener("pointermove", (ev) => {
+    if (arr) {
+      const r = svg.getBoundingClientRect(), dx = ev.clientX - arr[0], dy = ev.clientY - arr[1];
+      if (Math.abs(dx) + Math.abs(dy) > 4) { moveu = true; svg.classList.add("arrastando"); }
+      if (moveu) { vb[0] = arr[2] - dx / r.width * vb[2]; vb[1] = arr[3] - dy / r.height * vb[3]; aplicarVB(); }
+      return;
+    }
+    const p = ev.target.closest("path"), dica = $("dica");
+    if (!p) { dica.hidden = true; return; }
+    const i = +p.dataset.i, n = porMun.has(i) ? porMun.get(i).length : 0, q = $("quadro").getBoundingClientRect();
+    dica.innerHTML = `${esc(MAPA.m[i][0])}: ${n || "nenhuma"}${n ? (n === 1 ? " licitação" : " licitações") : ""}`;
+    dica.style.left = ev.clientX - q.left + "px"; dica.style.top = ev.clientY - q.top + "px"; dica.hidden = false;
+    if (n) mostrarInfo(i);
+  });
+  svg.addEventListener("pointerleave", () => { $("dica").hidden = true; });
+  svg.addEventListener("pointerup", (ev) => {
+    svg.classList.remove("arrastando");
+    if (!moveu) { const p = document.elementFromPoint(ev.clientX, ev.clientY)?.closest("path"); if (p) { const i = +p.dataset.i; mostrarInfo(i); paths.forEach((x) => x.classList.toggle("sel", +x.dataset.i === i)); } }
+    arr = null;
+  });
+  document.querySelectorAll(".zoom button").forEach((b) => b.addEventListener("click", () => {
+    const z = b.dataset.z;
+    if (z === "estado") { vb = [0, 0, MAPA.w, MAPA.h]; aplicarVB(); }
+    else if (z === "itapeva") centrarEm(ITAPEVA, 420);
+    else zoomEm(vb[0] + vb[2] / 2, vb[1] + vb[3] / 2, z === "+" ? 1 / 1.4 : 1.4);
+  }));
+}
+function trocarVista(v) {
+  $("v-lista").setAttribute("aria-pressed", v === "lista"); $("v-mapa").setAttribute("aria-pressed", v === "mapa");
+  $("lista").hidden = v !== "lista"; $("mapa").hidden = v !== "mapa";
+}
+
+/* memória do filtro só neste navegador */
+const IDS = ["f-busca", "f-km", "f-vmin", "f-vmax", "f-abertas", "f-tr", "f-ordem"];
+function salvar() { try { localStorage.setItem("natal-filtros", JSON.stringify(Object.fromEntries(IDS.map((id) => [id, $(id).type === "checkbox" ? $(id).checked : $(id).value])))); } catch (e) {} }
+function restaurar() { try { const s = JSON.parse(localStorage.getItem("natal-filtros") || "{}"); IDS.forEach((id) => { if (id in s) { if ($(id).type === "checkbox") $(id).checked = s[id]; else $(id).value = s[id]; } }); } catch (e) {} }
+
+document.addEventListener("input", (ev) => { if (ev.target.closest(".filtros") || ev.target.id === "f-ordem") aplicar(); });
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-i]");
+  if (b && (b.classList.contains("ir") || b.closest(".ranking"))) escolher(+b.dataset.i);
+});
+$("v-lista").addEventListener("click", () => trocarVista("lista"));
+$("v-mapa").addEventListener("click", () => trocarVista("mapa"));
+$("cidade-x").addEventListener("click", () => { cidadeSel = null; aplicar(); });
+$("limpar").addEventListener("click", () => {
+  $("f-busca").value = ""; $("f-km").value = 650; $("f-vmin").value = ""; $("f-vmax").value = ""; $("f-abertas").checked = true; $("f-tr").checked = false;
+  document.querySelectorAll(".chips input").forEach((i) => { i.checked = true; }); cidadeSel = null; aplicar();
+});
+if (matchMedia("(max-width: 860px)").matches) $("painel").open = false;
+carregar();
+</script>
+
+</html>
