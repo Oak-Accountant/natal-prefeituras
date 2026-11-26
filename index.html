@@ -177,6 +177,8 @@ details.mais summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; co
 .quadro path.sel { stroke: var(--ouro); stroke-width: 2.5; }
 .quadro path:hover { stroke: var(--tinta); stroke-width: 1.5; }
 .quadro circle.raio { fill: none; stroke: var(--pinho); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.quadro circle.raio2 { stroke-dasharray: 2 4; opacity: .7; }
+.quadro path.pr:not(.b1):not(.b2):not(.b3) { fill: color-mix(in srgb, var(--pinho) 7%, var(--ficha)); }
 .quadro circle.casa { fill: var(--ouro); stroke: var(--ficha); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 .quadro text.casa-t { font: 700 13px var(--f-texto); fill: var(--tinta); paint-order: stroke; stroke: var(--ficha); stroke-width: 3px; pointer-events: none; }
 .zoom { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -201,7 +203,7 @@ details.mais summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; co
 <div class="casca">
   <header>
     <div class="marca"><div class="selo" aria-hidden="true">DC</div><div>Preparado por <b>Duarte Carvalho Consultoria</b> para <b>Formatto Design</b> · <span id="coleta">PNCP</span></div></div>
-    <h1>Natal nas Prefeituras: licitações de <em>decoração natalina</em> abertas em SP</h1>
+    <h1>Natal nas Prefeituras: licitações de <em>decoração natalina</em> abertas em SP e no PR</h1>
     <p class="sub">Decoração, cenografia, iluminação e eventos de Natal, com edital, termo de referência e itens de cada uma. A distância é contada a partir de Itapeva.</p>
     <div class="placar" id="placar"></div>
   </header>
@@ -265,7 +267,7 @@ details.mais summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; co
       <div class="lista" id="lista"><div class="vazio">Carregando as licitações…</div></div>
       <div class="mapa" id="mapa" hidden>
         <div class="quadro" id="quadro">
-          <svg id="svg" role="img" aria-label="Mapa de São Paulo com as licitações de Natal por município"></svg>
+          <svg id="svg" role="img" aria-label="Mapa de São Paulo e do Paraná com as licitações de Natal por município"></svg>
           <div class="zoom">
             <button type="button" data-z="estado">Estado</button>
             <button type="button" data-z="itapeva">Itapeva</button>
@@ -280,7 +282,7 @@ details.mais summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; co
           <div class="cartao"><h4>Mais perto de Itapeva</h4><ol class="ranking" id="ranking"></ol></div>
         </div>
       </div>
-      <p class="nota">Fonte: Portal Nacional de Contratações Públicas (PNCP), editais com proposta aberta. Os documentos abrem direto no PNCP. Quando não há termo de referência separado, ele vem dentro do edital, como anexo. Valor estimado é o publicado pelo órgão; quando o órgão não publica (valor sigiloso), aparece "sigiloso". Distância em linha reta a partir de Itapeva, aproximada; a estrada é maior. Antes de decidir, leia o edital: exigências de habilitação, visita técnica, prazos de montagem e forma de pagamento estão lá.</p>
+      <p class="nota">Fonte: Portal Nacional de Contratações Públicas (PNCP), editais com proposta aberta. Os documentos abrem direto no PNCP. Quando não há termo de referência separado, ele vem dentro do edital, como anexo. Valor estimado é o publicado pelo órgão; quando o órgão não publica (valor sigiloso), aparece "sigiloso". Distância em linha reta entre as sedes, a partir de Itapeva; a estrada é cerca de 30% maior. No Paraná, entram as licitações até 200 km de Itapeva. Antes de decidir, leia o edital: exigências de habilitação, visita técnica, prazos de montagem e forma de pagamento estão lá.</p>
     </main>
   </div>
 </div>
@@ -311,7 +313,7 @@ const fmtQuando = (o) => {
 
 async function carregar() {
   try {
-    const [r1, r2] = await Promise.all([fetch("licitacoes.json"), fetch("mapa_sp.json")]);
+    const [r1, r2] = await Promise.all([fetch("licitacoes.json"), fetch("mapa.json")]);
     const d = await r1.json(); MAPA = await r2.json();
     L = d.licitacoes; ITAPEVA = d.itapeva;
     const g = new Date(d.gerado_em);
@@ -374,6 +376,7 @@ function ficha(o) {
   const tags = [];
   if (o.grupo === "alvo") tags.push(`<span class="alv">Em andamento com a assessoria</span>`);
   if (o.km != null && o.km <= 150) tags.push(`<span class="reg">Região de Itapeva</span>`);
+  if (o.uf === "PR") tags.push(`<span class="reg">Paraná</span>`);
   tags.push(`<span>${esc(o.tipo)}</span>`, `<span>${esc(o.plataforma)}</span>`);
   if (o.itens.length) tags.push(`<span>${o.itens.length} ${o.itens.length === 1 ? "item" : "itens"}</span>`);
   const edital = o.docs.filter((x) => x.tipo === "Edital"), tr = o.docs.filter((x) => x.tipo === "TR"), outros = o.docs.filter((x) => x.tipo === "Anexo");
@@ -434,31 +437,33 @@ function aplicar() {
 /* mapa */
 const FAIXAS = [[1, "1"], [2, "2"], [3, "3 ou mais"]];
 let porMun = new Map();
+function nomeMun(i) { const x = MAPA.m[i]; return x[4] && x[4] !== "SP" ? x[0] + "/" + x[4] : x[0]; }
 function montarMapa() {
   const svg = $("svg");
   vb = [0, 0, MAPA.w, MAPA.h]; aplicarVB();
-  paths = MAPA.m.map(([, d], i) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.dataset.i = i; svg.appendChild(p); return p; });
+  paths = MAPA.m.map(([, d], i) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.dataset.i = i; p.dataset.uf = MAPA.m[i][4] || "SP"; svg.appendChild(p); return p; });
   const [, , cx, cy] = MAPA.m[ITAPEVA];
-  const raio = document.createElementNS(NS, "circle"); raio.setAttribute("class", "raio"); raio.setAttribute("cx", cx); raio.setAttribute("cy", cy); raio.setAttribute("r", 150 / 0.92); svg.appendChild(raio);
+  const raio = document.createElementNS(NS, "circle"); raio.setAttribute("class", "raio"); raio.setAttribute("cx", cx); raio.setAttribute("cy", cy); raio.setAttribute("r", 150 / (MAPA.k || 0.92)); svg.appendChild(raio);
+  const raio2 = document.createElementNS(NS, "circle"); raio2.setAttribute("class", "raio raio2"); raio2.setAttribute("cx", cx); raio2.setAttribute("cy", cy); raio2.setAttribute("r", 200 / (MAPA.k || 0.92)); svg.appendChild(raio2);
   const casa = document.createElementNS(NS, "circle"); casa.setAttribute("class", "casa"); casa.setAttribute("cx", cx); casa.setAttribute("cy", cy); casa.setAttribute("r", 5); svg.appendChild(casa);
   const t = document.createElementNS(NS, "text"); t.setAttribute("class", "casa-t"); t.setAttribute("x", cx + 8); t.setAttribute("y", cy + 4); t.textContent = "Itapeva"; svg.appendChild(t);
-  $("legenda").innerHTML = `<span>Licitações por município:</span>` + FAIXAS.map(([, r], i) => `<span><i class="lg${i + 1}"></i>${r}</span>`).join("") + `<span><i class="lg0"></i>nenhuma</span><span><i class="lgr"></i>150 km de Itapeva</span>`;
+  $("legenda").innerHTML = `<span>Licitações por município:</span>` + FAIXAS.map(([, r], i) => `<span><i class="lg${i + 1}"></i>${r}</span>`).join("") + `<span><i class="lg0"></i>nenhuma</span><span><i class="lgr"></i>150 e 200 km de Itapeva</span>`;
   $("info").innerHTML = "<h4>Escolha uma cidade</h4><p>Passe o mouse ou toque num município. As cores seguem os filtros ao lado.</p>";
   ligarZoom(svg);
 }
 function desenharMapa(base) {
   const g = new Map(); base.forEach((o) => { if (o.map != null) { if (!g.has(o.map)) g.set(o.map, []); g.get(o.map).push(o); } });
   porMun = g;
-  paths.forEach((p, i) => { const n = g.has(i) ? g.get(i).length : 0; p.setAttribute("class", (n ? "b" + Math.min(n, 3) : "") + (i === cidadeSel ? " sel" : "")); });
+  paths.forEach((p, i) => { const n = g.has(i) ? g.get(i).length : 0; p.setAttribute("class", (n ? "b" + Math.min(n, 3) : "") + (i === cidadeSel ? " sel" : "") + (p.dataset.uf === "PR" ? " pr" : "")); });
   const top = [...g].sort((a, b) => (a[1][0].km ?? 9999) - (b[1][0].km ?? 9999)).slice(0, 12);
-  $("ranking").innerHTML = top.length ? top.map(([i, l]) => `<li><button type="button" data-i="${i}">${esc(MAPA.m[i][0])} <small>${l[0].km ?? "?"} km · ${l.length}</small></button></li>`).join("") : `<li><small>Nenhuma com esses filtros.</small></li>`;
+  $("ranking").innerHTML = top.length ? top.map(([i, l]) => `<li><button type="button" data-i="${i}">${esc(nomeMun(i))} <small>${l[0].km ?? "?"} km · ${l.length}</small></button></li>`).join("") : `<li><small>Nenhuma com esses filtros.</small></li>`;
   if (cidadeSel != null) mostrarInfo(cidadeSel);
 }
 function textoInfo(i) {
   const l = porMun.get(i) || [];
-  if (!l.length) return `<h4>${esc(MAPA.m[i][0])}</h4><p>Nenhuma licitação de Natal aberta com esses filtros.</p>`;
+  if (!l.length) return `<h4>${esc(nomeMun(i))}</h4><p>Nenhuma licitação de Natal aberta com esses filtros.</p>`;
   const soma = l.reduce((s, o) => s + (o.valor || 0), 0);
-  return `<h4>${esc(MAPA.m[i][0])}</h4><p><b>${l.length}</b> ${l.length === 1 ? "licitação" : "licitações"}</p><p>Valor somado: <b>${soma ? brl(soma) : "sigiloso"}</b></p><p>Distância: <b>≈ ${l[0].km} km</b></p><button type="button" class="ir" data-i="${i}">Ver na lista</button>`;
+  return `<h4>${esc(nomeMun(i))}</h4><p><b>${l.length}</b> ${l.length === 1 ? "licitação" : "licitações"}</p><p>Valor somado: <b>${soma ? brl(soma) : "sigiloso"}</b></p><p>Distância: <b>≈ ${l[0].km} km</b></p><button type="button" class="ir" data-i="${i}">Ver na lista</button>`;
 }
 function mostrarInfo(i) { $("info").innerHTML = textoInfo(i); }
 function escolher(i) { cidadeSel = i; trocarVista("lista"); aplicar(); }
@@ -480,7 +485,7 @@ function ligarZoom(svg) {
     const p = ev.target.closest("path"), dica = $("dica");
     if (!p) { dica.hidden = true; return; }
     const i = +p.dataset.i, n = porMun.has(i) ? porMun.get(i).length : 0, q = $("quadro").getBoundingClientRect();
-    dica.innerHTML = `${esc(MAPA.m[i][0])}: ${n || "nenhuma"}${n ? (n === 1 ? " licitação" : " licitações") : ""}`;
+    dica.innerHTML = `${esc(nomeMun(i))}: ${n || "nenhuma"}${n ? (n === 1 ? " licitação" : " licitações") : ""}`;
     dica.style.left = ev.clientX - q.left + "px"; dica.style.top = ev.clientY - q.top + "px"; dica.hidden = false;
     if (n) mostrarInfo(i);
   });
